@@ -10,8 +10,8 @@
 
 <table>
 <tr>
-<td valign="top"><img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/sujan-ascii.svg?v=20" width="370" alt="ASCII portrait" /></td>
-<td valign="top"><img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/info-card.svg?v=20" width="490" alt="Experience, stack, highlights" /></td>
+<td valign="top"><img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/sujan-ascii.svg?v=30" width="370" alt="ASCII portrait" /></td>
+<td valign="top"><img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/info-card.svg?v=30" width="490" alt="Experience, stack, highlights" /></td>
 </tr>
 </table>
 
@@ -21,7 +21,7 @@
 
 <br>
 
-<!-- 2D Random Pac-Man Target Hunter Contribution Heatmap -->
-<img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/contrib-heatmap.svg?v=20" width="860" alt="GitHub contribution graph" />
+<!-- 2D Random Hopping Pac-Man Target Hunter Contribution Heatmap -->
+<img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/contrib-heatmap.svg?v=30" width="860" alt="GitHub contribution graph" />
 
 </div>

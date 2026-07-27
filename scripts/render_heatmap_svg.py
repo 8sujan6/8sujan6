@@ -1,15 +1,15 @@
 """
 Render a 100% mathematically exact Arcade Pac-Man Contribution Graph SVG:
-- PROPER PAC-MAN SPRITE: High-detail 8-bit vector arcade Pac-Man with eye + animated mouth.
-- NON-LINEAR RANDOM 2D TRAVERSAL: Pac-Man moves unpredictably between active contribution cells across all rows and columns.
-- EXACT PIXEL TARGETING: Computes exact cell centers (grid_left + col * 15 + 6, grid_top + row * 15 + 6).
-- CELL EATING MECHANICS: Every active contribution cell starts as a Pac-Man Yellow Power Pellet (#ffcc00),
-  and changes into GitHub Green (#39d353) exactly when Pac-Man visits it.
-- SMOOTH & BALANCED SPEED: Traversal speed is paced smoothly for high visual clarity.
+- PROPER 8-BIT PAC-MAN SPRITE: Iconic pixelated arcade Pac-Man with clear mouth chomp and eye.
+- RANDOM 2D NON-LINEAR HOPPING: Pac-Man teleports/hops randomly across different columns and rows!
+- INDIVIDUAL UN-EVEN TIMING & SPEED: Pac-Man visits random contribution boxes in random order.
+- CELL EATING MECHANICS: Active contribution cells start as Pac-Man Yellow (#ffcc00),
+  and turn GitHub Green (#39d353) exactly when Pac-Man lands on them.
 """
 import datetime
 import json
 import os
+import random
 
 HERE = os.path.dirname(__file__)
 IN_PATH = os.path.join(HERE, "..", "data", "contributions.json")
@@ -81,7 +81,7 @@ def render(data):
     grid_top = TITLEBAR_H + TOP_LABEL_H
     grid_left = PAD + LEFT_LABEL_W
 
-    # Collect all active contribution cells
+    # Collect active contribution cells
     active_cells = []
     for c in range(cols_count):
         for r in range(7):
@@ -89,44 +89,42 @@ def render(data):
             if cell and cell[1] > 0:
                 active_cells.append((c, r, cell))
 
-    # Generate a pseudo-random non-linear traversal route through active cells
-    # Pick a well-distributed sequence of 18 active cell targets across different rows & cols
-    targets = []
-    num_active = len(active_cells)
-    if num_active > 0:
-        # Use prime stride to create non-linear jump pattern across rows & columns
-        stride = 7 if num_active > 7 else 1
-        curr_idx = 0
-        visited = set()
-        while len(targets) < min(20, num_active):
-            c, r, cell = active_cells[curr_idx % num_active]
-            if (c, r) not in visited:
-                targets.append((c, r, cell))
-                visited.add((c, r))
-            curr_idx += stride
+    # Seed random for deterministic reproducible pattern
+    rng = random.Random(42)
+    shuffled = list(active_cells)
+    rng.shuffle(shuffled)
 
-    if not targets:
-        targets = [(5, 1, grid[5][1]), (18, 5, grid[18][5]), (32, 2, grid[32][2]), (45, 6, grid[45][6])]
-
+    # Pick 16 random targets across all rows and columns
+    targets = shuffled[:16]
     total_targets = len(targets)
-    total_dur = 24.0  # Smooth 24-second total loop time (not too fast, very readable)
+    total_dur = 20.0  # 20 seconds loop
 
-    # Build SVG <path d="..."> passing through exact cell centers
-    path_d_parts = []
+    # Generate keyframe position jumps for Pac-Man across random targets
+    pac_keyframes = []
     food_events = {}
 
     for idx, (c, r, cell) in enumerate(targets):
+        pct = (idx / total_targets) * 100
         cx = grid_left + c * STEP + CELL / 2.0
         cy = grid_top + r * STEP + CELL / 2.0
-        cmd = "M" if idx == 0 else "L"
-        path_d_parts.append(f"{cmd} {cx:.1f} {cy:.1f}")
+        
+        pac_keyframes.append(f"{pct:.1f}% {{ transform: translate({cx:.1f}px, {cy:.1f}px); }}")
+        food_events[(c, r)] = (pct, cell)
 
-        eat_pct = (idx / (total_targets - 1)) * 100
-        food_events[(c, r)] = (eat_pct, cell)
+    # End at starting location for smooth loop
+    first_cx = grid_left + targets[0][0] * STEP + CELL / 2.0
+    first_cy = grid_top + targets[0][1] * STEP + CELL / 2.0
+    pac_keyframes.append(f"100% {{ transform: translate({first_cx:.1f}px, {first_cy:.1f}px); }}")
 
-    path_d = " ".join(path_d_parts)
+    css_rules = [f"""
+    @keyframes pacJump {{
+        {' '.join(pac_keyframes)}
+    }}
+    .pacman-sprite {{
+        animation: pacJump {total_dur}s step-end infinite;
+    }}
+    """]
 
-    css_rules = []
     for (c, r), (eat_pct, cell) in food_events.items():
         date_s, count, lvl = cell
         target_color = PALETTE[lvl]
@@ -134,8 +132,8 @@ def render(data):
         css_rules.append(f"""
         @keyframes {anim_name} {{
             0%, {eat_pct:.1f}% {{ fill: {PAC_YELLOW}; opacity: 1; }}
-            {eat_pct+0.6:.1f}% {{ fill: #ffffff; opacity: 1; }}
-            {eat_pct+2.0:.1f}%, 100% {{ fill: {target_color}; opacity: 1; }}
+            {eat_pct+0.5:.1f}% {{ fill: #ffffff; opacity: 1; }}
+            {eat_pct+1.5:.1f}%, 100% {{ fill: {target_color}; opacity: 1; }}
         }}
         .active_box_{c}_{r} {{
             animation: {anim_name} {total_dur}s linear infinite;
@@ -151,8 +149,6 @@ def render(data):
         '<defs>',
         f'<linearGradient id="hbg" x1="0" y1="0" x2="0" y2="1">',
         f'<stop offset="0" stop-color="{BG2}"/><stop offset="1" stop-color="{BG}"/></linearGradient>',
-        # Exact Motion Path
-        f'<path id="pacPath" d="{path_d}" fill="none"/>',
         '</defs>',
         f'<rect width="{canvas_w}" height="{canvas_h}" rx="12" fill="url(#hbg)"/>',
         f'<rect x="0.5" y="0.5" width="{canvas_w-1}" height="{canvas_h-1}" rx="12" '
@@ -162,7 +158,7 @@ def render(data):
         f'<circle cx="36" cy="15" r="5" fill="#ffbd2e"/>',
         f'<circle cx="52" cy="15" r="5" fill="#27c93f"/>',
         f'<text x="{canvas_w/2}" y="{TITLEBAR_H/2 + 4}" fill="{PAC_YELLOW}" font-size="12" font-weight="bold" '
-        f'text-anchor="middle">8sujan6@arcade: ~/pacman-target-hunter --play</text>'
+        f'text-anchor="middle">8sujan6@arcade: ~/pacman-random-hunter --play</text>'
     ]
 
     # Month labels
@@ -196,7 +192,7 @@ def render(data):
             plural = "s" if count != 1 else ""
 
             if (ci, ri) in food_events:
-                # Target active box: starts Yellow (#ffcc00), turns Green when Pac-Man visits it
+                # Active target box: starts Yellow (#ffcc00), turns Green when Pac-Man lands on it
                 parts.append(
                     f'<rect class="active_box_{ci}_{ri}" x="{gx}" y="{gy}" width="{CELL}" height="{CELL}" rx="2.5" '
                     f'fill="{PAC_YELLOW}">'
@@ -209,27 +205,24 @@ def render(data):
                     f'<title>{date_s}: {count} contribution{plural}</title></rect>'
                 )
 
-    # PROPER ARCADE PAC-MAN VECTOR SPRITE (High-detail with eye and chomping mouth)
+    # ICONIC ARCADE PAC-MAN SPRITE WITH CHOMPING MOUTH & EYE
     parts.append(
-        f'<g>'
-        f'<g transform="translate(0, 0)">'
-        f'<path d="M 0 0 L 8 -6 A 8 8 0 1 1 8 6 Z" fill="{PAC_YELLOW}">'
-        f'<animate attributeName="d" values="M 0 0 L 8 -6 A 8 8 0 1 1 8 6 Z; M 0 0 L 8 -1 A 8 8 0 1 1 8 1 Z; M 0 0 L 8 -6 A 8 8 0 1 1 8 6 Z" dur="0.22s" repeatCount="indefinite"/>'
+        f'<g class="pacman-sprite">'
+        f'<g transform="translate(-6, -6)">'
+        f'<path fill="{PAC_YELLOW}" d="M 6 6 L 12 1 A 6 6 0 1 1 12 11 Z">'
+        f'<animate attributeName="d" values="M 6 6 L 12 1 A 6 6 0 1 1 12 11 Z; M 6 6 L 12 5.5 A 6 6 0 1 1 12 6.5 Z; M 6 6 L 12 1 A 6 6 0 1 1 12 11 Z" dur="0.2s" repeatCount="indefinite"/>'
         f'</path>'
-        f'<circle cx="1" cy="-4" r="1.3" fill="#000000"/>'  # Retro eye
+        f'<circle cx="6" cy="3" r="1.2" fill="#000000"/>'
         f'</g>'
-        f'<animateMotion dur="{total_dur}s" repeatCount="indefinite" rotate="auto">'
-        f'<mpath href="#pacPath"/>'
-        f'</animateMotion>'
         f'</g>'
     )
 
     # Legend
     leg_y = grid_top + 7 * STEP + 6
     leg_x = canvas_w - PAD - (len(PALETTE) * (CELL - 1) + 140)
-    parts.append(f'<text x="{leg_x}" y="{leg_y + CELL*0.8:.1f}" fill="{PAC_YELLOW}" font-size="10" font-weight="bold">🟡 Target Pellet</text>')
-    parts.append(f'<text x="{leg_x + 90}" y="{leg_y + CELL*0.8:.1f}" fill="{MUTED}" font-size="10">⟶</text>')
-    parts.append(f'<text x="{leg_x + 110}" y="{leg_y + CELL*0.8:.1f}" fill="{GREEN}" font-size="10" font-weight="bold">🟢 Eaten</text>')
+    parts.append(f'<text x="{leg_x}" y="{leg_y + CELL*0.8:.1f}" fill="{PAC_YELLOW}" font-size="10" font-weight="bold">🟡 Power Pellet</text>')
+    parts.append(f'<text x="{leg_x + 85}" y="{leg_y + CELL*0.8:.1f}" fill="{MUTED}" font-size="10">⟶</text>')
+    parts.append(f'<text x="{leg_x + 105}" y="{leg_y + CELL*0.8:.1f}" fill="{GREEN}" font-size="10" font-weight="bold">🟢 Eaten</text>')
 
     sep_y = leg_y + CELL + 14
     parts.append(f'<line x1="0" y1="{sep_y}" x2="{canvas_w}" y2="{sep_y}" stroke="{FRAME}" stroke-opacity="0.3"/>')
@@ -238,14 +231,14 @@ def render(data):
     ls = data["longest_streak"]["length"]
     total = data["total_contributions"]
     best = data["best_day"]
-    rng = data["range"]
+    rng_data = data["range"]
 
     ly = sep_y + 24
     parts.append(f'<text x="{PAD}" y="{ly}" font-size="13" fill="{GREEN}">'
                  f'<tspan font-weight="700">{total:,}</tspan>'
                  f'<tspan fill="{MUTED}"> contributions eaten by Pac-Man ᗧ···</tspan></text>')
     parts.append(f'<text x="{canvas_w - PAD}" y="{ly}" font-size="12" fill="{MUTED}" text-anchor="end">'
-                 f'{rng["start"]} &#8594; {rng["end"]}</text>')
+                 f'{rng_data["start"]} &#8594; {rng_data["end"]}</text>')
     ly += 24
     parts.append(f'<text x="{PAD}" y="{ly}" font-size="13" fill="{MUTED}">current streak '
                  f'<tspan fill="{ACCENT}" font-weight="700">{cs} days</tspan>'
@@ -262,4 +255,4 @@ if __name__ == "__main__":
     svg = render(data)
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         f.write(svg)
-    print(f"Wrote random 2D Pac-Man contribution heatmap to {OUT_PATH} ({len(svg)} bytes)")
+    print(f"Wrote random 2D hopping Pac-Man contribution heatmap to {OUT_PATH} ({len(svg)} bytes)")
