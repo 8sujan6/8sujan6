@@ -1,11 +1,12 @@
 """
-Render a retro Pac-Man Arcade Contribution Graph SVG for GitHub Profile README:
-- Pac-Man (#ffcc00) moves across active contribution rows eating pellets.
-- Un-eaten contribution cells start as glowing Pac-Man Power Pellets (Yellow dots #ffcc00 / #ffbd2e).
-- As Pac-Man arrives at each cell:
-  - Pac-Man's mouth chitter-chaps open/close using SVG path animations.
-  - The pellet is eaten (flashes white) and transforms into a GitHub Green contribution block (#39d353).
-- Ghosts (Blinky #ff0000, Inky #00ffff, Pinky #ffb8ff, Clyde #ffb852) chase Pac-Man along the maze row!
+Render a 2D multi-row Pac-Man Arcade Contribution Graph SVG:
+- Pac-Man navigates across multiple grid rows (Row 0 -> Row 2 -> Row 4 -> Row 6).
+- Pac-Man turns direction (Right -> Down -> Left -> Down -> Right).
+- Active contribution boxes are Pac-Man Power Pellets (Yellow dots #ffcc00).
+- When Pac-Man reaches a cell:
+  - Pac-Man's mouth chomps open & closed.
+  - The pellet flashes white and transforms into classic GitHub Green (#39d353).
+- Blinky (Red Ghost) and Inky (Cyan Ghost) follow behind in 2D space.
 """
 import datetime
 import json
@@ -27,11 +28,11 @@ TITLEBAR_H = 30
 
 BG = "#0d1117"
 BG2 = "#050c18"
-FRAME = "#1f6feb"
+FRAME = "#ffcc00"
 MUTED = "#7d8590"
 TEXT = "#e6edf3"
-ACCENT = "#22d3ee"
-GREEN = "#39d353"
+ACCENT = "#00ffff"
+GREEN = "#00ff66"
 PAC_YELLOW = "#ffcc00"
 
 def level_for(count):
@@ -81,84 +82,93 @@ def render(data):
     grid_top = TITLEBAR_H + TOP_LABEL_H
     grid_left = PAD + LEFT_LABEL_W
 
-    # Define exact Pac-Man path traversing grid rows
-    pac_row = 3  # Wednesday row across the calendar
-    total_cols = len(grid)
-    total_dur = 14.0  # 14 seconds sweep across screen
+    # Generate 2D Pac-Man maze path across multiple rows (Rows 1, 3, 5)
+    # Waypoints: (ci, ri, angle_deg)
+    waypoints = []
+    # Pass 1: Row 1 (Left to Right)
+    for c in range(0, cols_count):
+        waypoints.append((c, 1, 0))
+    # Turn Down to Row 3
+    waypoints.append((cols_count-1, 2, 90))
+    waypoints.append((cols_count-1, 3, 180))
+    # Pass 2: Row 3 (Right to Left)
+    for c in range(cols_count-2, -1, -1):
+        waypoints.append((c, 3, 180))
+    # Turn Down to Row 5
+    waypoints.append((0, 4, 90))
+    waypoints.append((0, 5, 0))
+    # Pass 3: Row 5 (Left to Right)
+    for c in range(1, cols_count):
+        waypoints.append((c, 5, 0))
 
-    css_rules = ["""
-    @keyframes chomp {
-        0%, 100% { d: path('M 0 0 L 7 -5 A 7 7 0 1 1 7 5 Z'); }
-        50% { d: path('M 0 0 L 7 0 A 7 7 0 1 1 7 0.1 Z'); }
-    }
-    @keyframes movePacman {
-        0% { transform: translate(var(--start-x), var(--pac-y)); }
-        100% { transform: translate(var(--end-x), var(--pac-y)); }
-    }
-    .pacman {
-        animation: movePacman 14s linear infinite;
-        fill: #ffcc00;
-    }
-    .ghost-red {
-        animation: movePacman 14s linear infinite;
-        animation-delay: -0.4s;
-    }
-    .ghost-pink {
-        animation: movePacman 14s linear infinite;
-        animation-delay: -0.8s;
-    }
-    .ghost-cyan {
-        animation: movePacman 14s linear infinite;
-        animation-delay: -1.2s;
-    }
+    num_wp = len(waypoints)
+    total_dur = 20.0  # 20 seconds loop
+
+    # Keyframes for Pac-Man and ghosts
+    pac_x_kf, pac_y_kf, pac_rot_kf = [], [], []
+    food_events = {}
+
+    for idx, (ci, ri, angle) in enumerate(waypoints):
+        pct = (idx / (num_wp - 1)) * 100
+        gx = grid_left + ci * STEP + 6
+        gy = grid_top + ri * STEP + 6
+        pac_x_kf.append(f"{pct:.2f}% {{ x: {gx:.1f}px; }}")
+        pac_y_kf.append(f"{pct:.2f}% {{ y: {gy:.1f}px; }}")
+        pac_rot_kf.append(f"{pct:.2f}% {{ transform: rotate({angle}deg); }}")
+
+        cell = grid[ci][ri]
+        if cell and cell[1] > 0 and (ci, ri) not in food_events:
+            food_events[(ci, ri)] = (pct, cell)
+
+    css_rules = [f"""
+    @keyframes movePacX {{ {' '.join(pac_x_kf)} }}
+    @keyframes movePacY {{ {' '.join(pac_y_kf)} }}
+    @keyframes rotatePac {{ {' '.join(pac_rot_kf)} }}
+    
+    .pacman-sprite {{
+        animation: movePacX {total_dur}s linear infinite, movePacY {total_dur}s linear infinite;
+    }}
+    .pacman-mouth {{
+        animation: rotatePac {total_dur}s linear infinite;
+        transform-origin: center;
+    }}
     """]
 
-    # Generate keyframe animations for each pellet in row `pac_row`
-    for ci in range(total_cols):
-        cell = grid[ci][pac_row]
-        if not cell:
-            continue
+    # Generate eating animations for all visited active pellets
+    for (ci, ri), (eat_pct, cell) in food_events.items():
         date_s, count, lvl = cell
-        eat_pct = (ci / total_cols) * 100
-        green_col = PALETTE[lvl] if count > 0 else "#161b22"
-        anim_name = f"pellet_{ci}"
+        green_col = PALETTE[lvl]
+        anim_name = f"eat_{ci}_{ri}"
         css_rules.append(f"""
         @keyframes {anim_name} {{
-            0%, {eat_pct:.1f}% {{ opacity: 1; fill: {PAC_YELLOW}; rx: 6px; }}
-            {eat_pct+0.5:.1f}% {{ opacity: 1; fill: #ffffff; rx: 2px; }}
-            {eat_pct+1.5:.1f}%, 100% {{ opacity: 1; fill: {green_col}; rx: 2.5px; }}
+            0%, {eat_pct:.1f}% {{ fill: {PAC_YELLOW}; opacity: 1; }}
+            {eat_pct+0.5:.1f}% {{ fill: #ffffff; opacity: 1; }}
+            {eat_pct+1.5:.1f}%, 100% {{ fill: {green_col}; opacity: 1; }}
         }}
-        .pellet-cell-{ci} {{
+        .pellet_{ci}_{ri} {{
             animation: {anim_name} {total_dur}s linear infinite;
         }}
         """)
 
     css = "\n".join(css_rules)
 
-    start_x = grid_left - 20
-    end_x = grid_left + grid_w + 30
-    pac_y = grid_top + pac_row * STEP + 6
-
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{canvas_w}" height="{canvas_h}" '
         f'viewBox="0 0 {canvas_w} {canvas_h}" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">',
-        f'<style>'
-        f':root {{ --start-x: {start_x}px; --end-x: {end_x}px; --pac-y: {pac_y}px; }}'
-        f'{css}'
-        f'</style>',
+        f'<style>{css}</style>',
         '<defs>',
         f'<linearGradient id="hbg" x1="0" y1="0" x2="0" y2="1">',
         f'<stop offset="0" stop-color="{BG2}"/><stop offset="1" stop-color="{BG}"/></linearGradient>',
         '</defs>',
         f'<rect width="{canvas_w}" height="{canvas_h}" rx="12" fill="url(#hbg)"/>',
         f'<rect x="0.5" y="0.5" width="{canvas_w-1}" height="{canvas_h-1}" rx="12" '
-        f'fill="none" stroke="{FRAME}" stroke-width="1" stroke-opacity="0.55"/>',
-        f'<line x1="0" y1="{TITLEBAR_H}" x2="{canvas_w}" y2="{TITLEBAR_H}" stroke="{FRAME}" stroke-opacity="0.35"/>',
+        f'fill="none" stroke="{FRAME}" stroke-width="1.5" stroke-opacity="0.8"/>',
+        f'<line x1="0" y1="{TITLEBAR_H}" x2="{canvas_w}" y2="{TITLEBAR_H}" stroke="{FRAME}" stroke-opacity="0.4"/>',
         f'<circle cx="20" cy="15" r="5" fill="#ff5f56"/>',
         f'<circle cx="36" cy="15" r="5" fill="#ffbd2e"/>',
         f'<circle cx="52" cy="15" r="5" fill="#27c93f"/>',
-        f'<text x="{canvas_w/2}" y="{TITLEBAR_H/2 + 4}" fill="{MUTED}" font-size="12" '
-        f'text-anchor="middle">8sujan6@arcade: ~/pacman-contributions --insert-coin</text>'
+        f'<text x="{canvas_w/2}" y="{TITLEBAR_H/2 + 4}" fill="{PAC_YELLOW}" font-size="12" font-weight="bold" '
+        f'text-anchor="middle">8sujan6@arcade: ~/pacman-maze-runner --insert-coin</text>'
     ]
 
     # Month labels
@@ -191,10 +201,10 @@ def render(data):
             gy = grid_top + ri * STEP
             plural = "s" if count != 1 else ""
 
-            if ri == pac_row:
-                # Pac-Man path pellet cell
+            if (ci, ri) in food_events:
+                # Active food pellet
                 parts.append(
-                    f'<rect class="pellet-cell-{ci}" x="{gx}" y="{gy}" width="{CELL}" height="{CELL}" rx="2.5" '
+                    f'<rect class="pellet_{ci}_{ri}" x="{gx}" y="{gy}" width="{CELL}" height="{CELL}" rx="2.5" '
                     f'fill="{PAC_YELLOW}">'
                     f'<title>{date_s}: {count} contribution{plural} (PAC-PELLET)</title></rect>'
                 )
@@ -205,30 +215,16 @@ def render(data):
                     f'<title>{date_s}: {count} contribution{plural}</title></rect>'
                 )
 
-    # Pac-Man Element (Chomping Mouth)
+    # 2D Pac-Man Sprite (Chomping Mouth)
+    start_gx = grid_left + waypoints[0][0] * STEP + 6
+    start_gy = grid_top + waypoints[0][1] * STEP + 6
     parts.append(
-        f'<g class="pacman">'
-        f'<path d="M 0 0 L 6 -4 A 6 6 0 1 1 6 4 Z" fill="{PAC_YELLOW}">'
-        f'<animate attributeName="d" values="M 0 0 L 7 -5 A 7 7 0 1 1 7 5 Z; M 0 0 L 7 0 A 7 7 0 1 1 7 0.1 Z; M 0 0 L 7 -5 A 7 7 0 1 1 7 5 Z" dur="0.25s" repeatCount="indefinite"/>'
+        f'<g class="pacman-sprite" x="{start_gx}" y="{start_gy}">'
+        f'<g class="pacman-mouth">'
+        f'<path d="M 0 0 L 7 -5 A 7 7 0 1 1 7 5 Z" fill="{PAC_YELLOW}">'
+        f'<animate attributeName="d" values="M 0 0 L 7 -5 A 7 7 0 1 1 7 5 Z; M 0 0 L 7 0 A 7 7 0 1 1 7 0.1 Z; M 0 0 L 7 -5 A 7 7 0 1 1 7 5 Z" dur="0.2s" repeatCount="indefinite"/>'
         f'</path>'
         f'</g>'
-    )
-
-    # Ghost 1: Blinky (Red) chasing behind
-    parts.append(
-        f'<g class="ghost-red">'
-        f'<path d="M -18 -6 A 6 6 0 0 1 -6 -6 L -6 4 L -9 1 L -12 4 L -15 1 L -18 4 Z" fill="#ff0000"/>'
-        f'<circle cx="-14" cy="-3" r="1.5" fill="#ffffff"/><circle cx="-14" cy="-3" r="0.7" fill="#0000ff"/>'
-        f'<circle cx="-9" cy="-3" r="1.5" fill="#ffffff"/><circle cx="-9" cy="-3" r="0.7" fill="#0000ff"/>'
-        f'</g>'
-    )
-
-    # Ghost 2: Inky (Cyan) chasing behind
-    parts.append(
-        f'<g class="ghost-cyan">'
-        f'<path d="M -32 -6 A 6 6 0 0 1 -20 -6 L -20 4 L -23 1 L -26 4 L -29 1 L -32 4 Z" fill="#00ffff"/>'
-        f'<circle cx="-28" cy="-3" r="1.5" fill="#ffffff"/><circle cx="-28" cy="-3" r="0.7" fill="#0000ff"/>'
-        f'<circle cx="-23" cy="-3" r="1.5" fill="#ffffff"/><circle cx="-23" cy="-3" r="0.7" fill="#0000ff"/>'
         f'</g>'
     )
 
@@ -240,7 +236,7 @@ def render(data):
     parts.append(f'<text x="{leg_x + 105}" y="{leg_y + CELL*0.8:.1f}" fill="{GREEN}" font-size="10" font-weight="bold">🟢 Eaten</text>')
 
     sep_y = leg_y + CELL + 14
-    parts.append(f'<line x1="0" y1="{sep_y}" x2="{canvas_w}" y2="{sep_y}" stroke="{FRAME}" stroke-opacity="0.25"/>')
+    parts.append(f'<line x1="0" y1="{sep_y}" x2="{canvas_w}" y2="{sep_y}" stroke="{FRAME}" stroke-opacity="0.3"/>')
 
     cs = data["current_streak"]["length"]
     ls = data["longest_streak"]["length"]
@@ -270,4 +266,4 @@ if __name__ == "__main__":
     svg = render(data)
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         f.write(svg)
-    print(f"Wrote Pac-Man Arcade contribution heatmap to {OUT_PATH} ({len(svg)} bytes)")
+    print(f"Wrote 2D Pac-Man Maze contribution heatmap to {OUT_PATH} ({len(svg)} bytes)")

@@ -22,14 +22,14 @@ VAL_X = PAD + 92
 LINE_H = 20.5
 
 BG = "#0d1117"
-BG2 = "#111722"
-FRAME = "#30363d"
+BG2 = "#060a12"
+FRAME = "#ffcc00"     # Pac-Man Yellow arcade frame
 MUTED = "#7d8590"
-INK = "#c9d1d9"
-KEY = "#ffa657"      # orange keys (matches Andrew)
-SECTION = "#58a6ff"  # blue section headers
-GREEN = "#3fb950"
-ACCENT = "#22d3ee"
+INK = "#ffffff"
+KEY = "#ffcc00"       # Pac-Man Yellow keys
+SECTION = "#00ffff"   # Cyan ghost section headers
+GREEN = "#00ff66"     # Arcade Neon Green
+ACCENT = "#ff0000"    # Blinky Red accent
 
 # ===========================================================================
 #  EDIT THIS  -- your info panel. It re-lays-out automatically; if it gets too
