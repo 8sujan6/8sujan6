@@ -164,6 +164,31 @@ def render(data):
         lx += CELL
     parts.append(f'<text x="{lx + 4}" y="{leg_y + CELL*0.8:.1f}" fill="{MUTED}" font-size="10">More</text>')
 
+    # Animated Snake Game Overlay
+    snake_path_d = (
+        f"M {grid_left+6} {grid_top+6} "
+        f"L {grid_left+30*STEP+6} {grid_top+6} "
+        f"L {grid_left+30*STEP+6} {grid_top+2*STEP+6} "
+        f"L {grid_left+10*STEP+6} {grid_top+2*STEP+6} "
+        f"L {grid_left+10*STEP+6} {grid_top+5*STEP+6} "
+        f"L {grid_left+45*STEP+6} {grid_top+5*STEP+6} "
+        f"L {grid_left+45*STEP+6} {grid_top+1*STEP+6} "
+        f"L {grid_left+52*STEP+6} {grid_top+1*STEP+6}"
+    )
+    parts.append(
+        f'<path d="{snake_path_d}" fill="none" stroke="#00ff66" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" '
+        f'stroke-dasharray="35 600" opacity="0.9">'
+        f'<animate attributeName="stroke-dashoffset" from="0" to="-635" dur="10s" repeatCount="indefinite"/>'
+        f'</path>'
+    )
+    # Snake Head
+    parts.append(
+        f'<path d="{snake_path_d}" fill="none" stroke="#69f0a0" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" '
+        f'stroke-dasharray="2 633" opacity="1">'
+        f'<animate attributeName="stroke-dashoffset" from="0" to="-635" dur="10s" repeatCount="indefinite"/>'
+        f'</path>'
+    )
+
     sep_y = leg_y + CELL + 14
     parts.append(f'<line x1="0" y1="{sep_y}" x2="{canvas_w}" y2="{sep_y}" stroke="{FRAME}" stroke-opacity="0.25"/>')
 

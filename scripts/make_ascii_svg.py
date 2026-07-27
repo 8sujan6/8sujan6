@@ -27,15 +27,14 @@ COLS = 100
 ROWS = 53
 CELL_W = 8
 CELL_H = 15
-RAMP = " .`:-=+*cs#%@"  # bright(sparse) -> dark(dense); leading space clears bg
+RAMP = " .:-=+*#%@█"  # Matrix/Hacker block characters
 
-# the prepped image already has bg removed + CLAHE local contrast, so only
-# light global tuning is needed here.
-CONTRAST = 1.05
-BRIGHTNESS = 1.0
-GAMMA = 1.18          # >1 brightens mids -> face lands in sparser chars
-SHARPEN = False
-WHITE_FLOOR = 0.80    # luminance above this is forced to blank (space)
+# the prepped image tuning for pixelated matrix look
+CONTRAST = 1.4
+BRIGHTNESS = 1.1
+GAMMA = 1.05          
+SHARPEN = True
+WHITE_FLOOR = 0.85    
 
 PAD = 20
 TITLEBAR_H = 30
@@ -46,11 +45,11 @@ CANVAS_W = ART_W + PAD * 2
 CANVAS_H = TITLEBAR_H + ART_H + STATUS_H + PAD
 
 BG = "#0d1117"
-BG2 = "#111722"
-FRAME = "#30363d"
-TITLE_TEXT = "#7d8590"
-INK = "#c9d1d9"      # the single ascii color (matches Andrew6rant)
-CURSOR = "#c9d1d9"
+BG2 = "#05150a"
+FRAME = "#00ff66"
+TITLE_TEXT = "#00cc55"
+INK = "#00ff66"      # Matrix Green
+CURSOR = "#00ff66"
 
 # ---- reveal timing (one-shot; a cursor rasters top -> bottom) -------------
 ROW_DUR = 0.11
@@ -145,6 +144,6 @@ parts.append(f'<rect x="{PAD+155}" y="{status_y-12:.1f}" width="8" height="14" f
 
 parts.append("</svg>")
 svg = "".join(parts)
-with open(OUT, "w") as f:
+with open(OUT, "w", encoding="utf-8") as f:
     f.write(svg)
 print("wrote", OUT, len(svg), "bytes;", CANVAS_W, "x", CANVAS_H)
