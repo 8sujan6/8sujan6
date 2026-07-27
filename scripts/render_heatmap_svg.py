@@ -1,13 +1,14 @@
 """
-Render a 100% mathematically exact Arcade Pac-Man Contribution Graph SVG:
-- PROPER 8-BIT PAC-MAN SPRITE: Iconic pixelated arcade Pac-Man with clear mouth chomp and eye.
-- RANDOM 2D NON-LINEAR HOPPING: Pac-Man teleports/hops randomly across different columns and rows!
-- INDIVIDUAL UN-EVEN TIMING & SPEED: Pac-Man visits random contribution boxes in random order.
-- CELL EATING MECHANICS: Active contribution cells start as Pac-Man Yellow (#ffcc00),
-  and turn GitHub Green (#39d353) exactly when Pac-Man lands on them.
+Render smooth, continuous non-teleporting 2D Pac-Man maze runner across contribution boxes:
+- CONTINUOUS GLIDING MOVEMENT (No teleporting! Smooth SVG animateMotion path).
+- ICONIC NAMCO PAC-MAN SPRITE: Classic yellow circle with wedge mouth that chomps open and shut.
+- RANDOM MANHATTAN PATH: Pac-Man glides continuously along row and column lines between random active contribution cells!
+- DYNAMIC ROTATION: Pac-Man automatically faces the direction he is running (Right, Down, Left, Up).
+- PERFECT 1:1 EATING MATCH: Each contribution box turns Green (#39d353) exactly when Pac-Man glides over it.
 """
 import datetime
 import json
+import math
 import os
 import random
 
@@ -81,7 +82,6 @@ def render(data):
     grid_top = TITLEBAR_H + TOP_LABEL_H
     grid_left = PAD + LEFT_LABEL_W
 
-    # Collect active contribution cells
     active_cells = []
     for c in range(cols_count):
         for r in range(7):
@@ -89,42 +89,51 @@ def render(data):
             if cell and cell[1] > 0:
                 active_cells.append((c, r, cell))
 
-    # Seed random for deterministic reproducible pattern
-    rng = random.Random(42)
+    rng = random.Random(77)
     shuffled = list(active_cells)
     rng.shuffle(shuffled)
+    key_targets = shuffled[:12]
 
-    # Pick 16 random targets across all rows and columns
-    targets = shuffled[:16]
-    total_targets = len(targets)
-    total_dur = 20.0  # 20 seconds loop
+    # Generate continuous Manhattan path (moving horizontally then vertically between random targets)
+    path_nodes = []
+    curr_c, curr_r, _ = key_targets[0]
+    path_nodes.append((curr_c, curr_r))
 
-    # Generate keyframe position jumps for Pac-Man across random targets
-    pac_keyframes = []
+    for target in key_targets[1:]:
+        tc, tr, _ = target
+        # Move horizontally first to tc, then vertically to tr
+        if tc != curr_c:
+            step_c = 1 if tc > curr_c else -1
+            for c in range(curr_c + step_c, tc + step_c, step_c):
+                path_nodes.append((c, curr_r))
+            curr_c = tc
+        if tr != curr_r:
+            step_r = 1 if tr > curr_r else -1
+            for r in range(curr_r + step_r, tr + step_r, step_r):
+                path_nodes.append((curr_c, r))
+            curr_r = tr
+
+    total_nodes = len(path_nodes)
+    total_dur = 22.0  # Smooth continuous 22-second run
+
+    # Build continuous SVG path d="..." string
+    path_d_parts = []
     food_events = {}
 
-    for idx, (c, r, cell) in enumerate(targets):
-        pct = (idx / total_targets) * 100
+    for idx, (c, r) in enumerate(path_nodes):
         cx = grid_left + c * STEP + CELL / 2.0
         cy = grid_top + r * STEP + CELL / 2.0
-        
-        pac_keyframes.append(f"{pct:.1f}% {{ transform: translate({cx:.1f}px, {cy:.1f}px); }}")
-        food_events[(c, r)] = (pct, cell)
+        cmd = "M" if idx == 0 else "L"
+        path_d_parts.append(f"{cmd} {cx:.1f} {cy:.1f}")
 
-    # End at starting location for smooth loop
-    first_cx = grid_left + targets[0][0] * STEP + CELL / 2.0
-    first_cy = grid_top + targets[0][1] * STEP + CELL / 2.0
-    pac_keyframes.append(f"100% {{ transform: translate({first_cx:.1f}px, {first_cy:.1f}px); }}")
+        cell = grid[c][r]
+        if cell and cell[1] > 0 and (c, r) not in food_events:
+            pct = (idx / (total_nodes - 1)) * 100
+            food_events[(c, r)] = (pct, cell)
 
-    css_rules = [f"""
-    @keyframes pacJump {{
-        {' '.join(pac_keyframes)}
-    }}
-    .pacman-sprite {{
-        animation: pacJump {total_dur}s step-end infinite;
-    }}
-    """]
+    path_d = " ".join(path_d_parts)
 
+    css_rules = []
     for (c, r), (eat_pct, cell) in food_events.items():
         date_s, count, lvl = cell
         target_color = PALETTE[lvl]
@@ -132,8 +141,8 @@ def render(data):
         css_rules.append(f"""
         @keyframes {anim_name} {{
             0%, {eat_pct:.1f}% {{ fill: {PAC_YELLOW}; opacity: 1; }}
-            {eat_pct+0.5:.1f}% {{ fill: #ffffff; opacity: 1; }}
-            {eat_pct+1.5:.1f}%, 100% {{ fill: {target_color}; opacity: 1; }}
+            {eat_pct+0.4:.1f}% {{ fill: #ffffff; opacity: 1; }}
+            {eat_pct+1.2:.1f}%, 100% {{ fill: {target_color}; opacity: 1; }}
         }}
         .active_box_{c}_{r} {{
             animation: {anim_name} {total_dur}s linear infinite;
@@ -149,6 +158,8 @@ def render(data):
         '<defs>',
         f'<linearGradient id="hbg" x1="0" y1="0" x2="0" y2="1">',
         f'<stop offset="0" stop-color="{BG2}"/><stop offset="1" stop-color="{BG}"/></linearGradient>',
+        # Continuous Motion Path
+        f'<path id="pacPath" d="{path_d}" fill="none"/>',
         '</defs>',
         f'<rect width="{canvas_w}" height="{canvas_h}" rx="12" fill="url(#hbg)"/>',
         f'<rect x="0.5" y="0.5" width="{canvas_w-1}" height="{canvas_h-1}" rx="12" '
@@ -158,7 +169,7 @@ def render(data):
         f'<circle cx="36" cy="15" r="5" fill="#ffbd2e"/>',
         f'<circle cx="52" cy="15" r="5" fill="#27c93f"/>',
         f'<text x="{canvas_w/2}" y="{TITLEBAR_H/2 + 4}" fill="{PAC_YELLOW}" font-size="12" font-weight="bold" '
-        f'text-anchor="middle">8sujan6@arcade: ~/pacman-random-hunter --play</text>'
+        f'text-anchor="middle">8sujan6@arcade: ~/pacman-maze-runner --smooth-glider</text>'
     ]
 
     # Month labels
@@ -205,15 +216,15 @@ def render(data):
                     f'<title>{date_s}: {count} contribution{plural}</title></rect>'
                 )
 
-    # ICONIC ARCADE PAC-MAN SPRITE WITH CHOMPING MOUTH & EYE
+    # ICONIC NAMCO PAC-MAN VECTOR SPRITE WITH ROTATING CONTINUOUS GLIDE AND WEDGE CHOMP
     parts.append(
-        f'<g class="pacman-sprite">'
-        f'<g transform="translate(-6, -6)">'
-        f'<path fill="{PAC_YELLOW}" d="M 6 6 L 12 1 A 6 6 0 1 1 12 11 Z">'
-        f'<animate attributeName="d" values="M 6 6 L 12 1 A 6 6 0 1 1 12 11 Z; M 6 6 L 12 5.5 A 6 6 0 1 1 12 6.5 Z; M 6 6 L 12 1 A 6 6 0 1 1 12 11 Z" dur="0.2s" repeatCount="indefinite"/>'
+        f'<g>'
+        f'<path fill="{PAC_YELLOW}" d="M 0 0 L 7 -5.5 A 7.5 7.5 0 1 1 7 5.5 Z">'
+        f'<animate attributeName="d" values="M 0 0 L 7.5 -5.5 A 7.5 7.5 0 1 1 7.5 5.5 Z; M 0 0 L 7.5 -0.5 A 7.5 7.5 0 1 1 7.5 0.5 Z; M 0 0 L 7.5 -5.5 A 7.5 7.5 0 1 1 7.5 5.5 Z" dur="0.2s" repeatCount="indefinite"/>'
         f'</path>'
-        f'<circle cx="6" cy="3" r="1.2" fill="#000000"/>'
-        f'</g>'
+        f'<animateMotion dur="{total_dur}s" repeatCount="indefinite" rotate="auto">'
+        f'<mpath href="#pacPath"/>'
+        f'</animateMotion>'
         f'</g>'
     )
 
@@ -255,4 +266,4 @@ if __name__ == "__main__":
     svg = render(data)
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         f.write(svg)
-    print(f"Wrote random 2D hopping Pac-Man contribution heatmap to {OUT_PATH} ({len(svg)} bytes)")
+    print(f"Wrote smooth continuous 2D Pac-Man maze runner heatmap to {OUT_PATH} ({len(svg)} bytes)")
