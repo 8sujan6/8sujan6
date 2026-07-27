@@ -10,8 +10,8 @@
 
 <table>
 <tr>
-<td valign="top"><img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/sujan-ascii.svg?v=70" width="370" alt="ASCII portrait" /></td>
-<td valign="top"><img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/info-card.svg?v=70" width="490" alt="Experience, stack, highlights" /></td>
+<td valign="top"><img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/sujan-ascii.svg?v=100" width="370" alt="ASCII portrait" /></td>
+<td valign="top"><img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/info-card.svg?v=100" width="490" alt="Experience, stack, highlights" /></td>
 </tr>
 </table>
 
@@ -21,7 +21,7 @@
 
 <br>
 
-<!-- Pac-Man smooth 2D maze runner — arc-length-proportional eat timing, no teleportation -->
-<img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/contrib-heatmap.svg?v=70" width="860" alt="GitHub contribution graph — Pac-Man edition" />
+<!-- GitHub Rocket Jet Heatmap Animation -->
+<img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/github-jet.svg?v=100" width="860" alt="GitHub Jet Heatmap" />
 
 </div>
