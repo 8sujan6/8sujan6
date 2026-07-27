@@ -16,6 +16,11 @@
 
 <br>
 
+<!-- Animated Spotify / Music Player Widget -->
+<img src="./music-player.svg" width="860" alt="Now Playing Music Widget" />
+
+<br>
+
 <!-- animated contribution graph, refreshed daily by the workflow -->
 <img src="./contrib-heatmap.svg" width="860" alt="GitHub contribution graph" />
 
