@@ -1,12 +1,9 @@
 """
-Render a 2D multi-row Pac-Man Arcade Contribution Graph SVG:
-- Pac-Man navigates across multiple grid rows (Row 0 -> Row 2 -> Row 4 -> Row 6).
-- Pac-Man turns direction (Right -> Down -> Left -> Down -> Right).
-- Active contribution boxes are Pac-Man Power Pellets (Yellow dots #ffcc00).
-- When Pac-Man reaches a cell:
-  - Pac-Man's mouth chomps open & closed.
-  - The pellet flashes white and transforms into classic GitHub Green (#39d353).
-- Blinky (Red Ghost) and Inky (Cyan Ghost) follow behind in 2D space.
+Render a 100% mathematically aligned 2D Pac-Man Maze Contribution Graph SVG:
+- Computes exact pixel coordinates for each cell (col * 15 + pad, row * 15 + pad).
+- Pac-Man sprite uses <animateMotion> over an exact SVG <path> matching grid cell centers.
+- Pellet eating keyframes map 1:1 with Pac-Man's exact arrival timestamp at each cell.
+- Ghosts (Blinky & Inky) follow exact path trailing behind Pac-Man.
 """
 import datetime
 import json
@@ -82,73 +79,62 @@ def render(data):
     grid_top = TITLEBAR_H + TOP_LABEL_H
     grid_left = PAD + LEFT_LABEL_W
 
-    # Generate 2D Pac-Man maze path across multiple rows (Rows 1, 3, 5)
-    # Waypoints: (ci, ri, angle_deg)
-    waypoints = []
-    # Pass 1: Row 1 (Left to Right)
+    # Define exact 2D serpentine maze path through rows 1, 3, and 5
+    # Waypoints: list of (col, row)
+    path_cells = []
+    # Row 1: left -> right
     for c in range(0, cols_count):
-        waypoints.append((c, 1, 0))
-    # Turn Down to Row 3
-    waypoints.append((cols_count-1, 2, 90))
-    waypoints.append((cols_count-1, 3, 180))
-    # Pass 2: Row 3 (Right to Left)
-    for c in range(cols_count-2, -1, -1):
-        waypoints.append((c, 3, 180))
-    # Turn Down to Row 5
-    waypoints.append((0, 4, 90))
-    waypoints.append((0, 5, 0))
-    # Pass 3: Row 5 (Left to Right)
-    for c in range(1, cols_count):
-        waypoints.append((c, 5, 0))
+        path_cells.append((c, 1))
+    # Row 2: rightmost step down
+    path_cells.append((cols_count - 1, 2))
+    # Row 3: right -> left
+    for c in range(cols_count - 1, -1, -1):
+        path_cells.append((c, 3))
+    # Row 4: leftmost step down
+    path_cells.append((0, 4))
+    # Row 5: left -> right
+    for c in range(0, cols_count):
+        path_cells.append((c, 5))
 
-    num_wp = len(waypoints)
-    total_dur = 20.0  # 20 seconds loop
+    total_cells_in_path = len(path_cells)
+    total_dur = 18.0  # 18 seconds full loop
 
-    # Keyframes for Pac-Man and ghosts
-    pac_x_kf, pac_y_kf, pac_rot_kf = [], [], []
-    food_events = {}
-
-    for idx, (ci, ri, angle) in enumerate(waypoints):
-        pct = (idx / (num_wp - 1)) * 100
-        gx = grid_left + ci * STEP + 6
-        gy = grid_top + ri * STEP + 6
-        pac_x_kf.append(f"{pct:.2f}% {{ x: {gx:.1f}px; }}")
-        pac_y_kf.append(f"{pct:.2f}% {{ y: {gy:.1f}px; }}")
-        pac_rot_kf.append(f"{pct:.2f}% {{ transform: rotate({angle}deg); }}")
-
-        cell = grid[ci][ri]
-        if cell and cell[1] > 0 and (ci, ri) not in food_events:
-            food_events[(ci, ri)] = (pct, cell)
-
-    css_rules = [f"""
-    @keyframes movePacX {{ {' '.join(pac_x_kf)} }}
-    @keyframes movePacY {{ {' '.join(pac_y_kf)} }}
-    @keyframes rotatePac {{ {' '.join(pac_rot_kf)} }}
+    # Construct exact SVG <path d="..."> string passing through center of cells
+    path_d_parts = []
+    for idx, (c, r) in enumerate(path_cells):
+        cx = grid_left + c * STEP + CELL / 2.0
+        cy = grid_top + r * STEP + CELL / 2.0
+        cmd = "M" if idx == 0 else "L"
+        path_d_parts.append(f"{cmd} {cx:.1f} {cy:.1f}")
     
-    .pacman-sprite {{
-        animation: movePacX {total_dur}s linear infinite, movePacY {total_dur}s linear infinite;
-    }}
-    .pacman-mouth {{
-        animation: rotatePac {total_dur}s linear infinite;
-        transform-origin: center;
-    }}
-    """]
+    path_d = " ".join(path_d_parts)
 
-    # Generate eating animations for all visited active pellets
-    for (ci, ri), (eat_pct, cell) in food_events.items():
+    # Exact time mapping for each cell eating event
+    food_events = {}
+    for idx, (c, r) in enumerate(path_cells):
+        pct = (idx / (total_cells_in_path - 1)) * 100
+        cell = grid[c][r]
+        if cell and (c, r) not in food_events:
+            food_events[(c, r)] = (pct, cell)
+
+    css_rules = []
+    for (c, r), (eat_pct, cell) in food_events.items():
         date_s, count, lvl = cell
-        green_col = PALETTE[lvl]
-        anim_name = f"eat_{ci}_{ri}"
-        css_rules.append(f"""
-        @keyframes {anim_name} {{
-            0%, {eat_pct:.1f}% {{ fill: {PAC_YELLOW}; opacity: 1; }}
-            {eat_pct+0.5:.1f}% {{ fill: #ffffff; opacity: 1; }}
-            {eat_pct+1.5:.1f}%, 100% {{ fill: {green_col}; opacity: 1; }}
-        }}
-        .pellet_{ci}_{ri} {{
-            animation: {anim_name} {total_dur}s linear infinite;
-        }}
-        """)
+        target_color = PALETTE[lvl] if count > 0 else "#161b22"
+        # If count > 0, it starts yellow (food) and eats into green.
+        # If count == 0, it stays dark grid.
+        if count > 0:
+            anim_name = f"eat_{c}_{r}"
+            css_rules.append(f"""
+            @keyframes {anim_name} {{
+                0%, {eat_pct:.1f}% {{ fill: {PAC_YELLOW}; opacity: 1; }}
+                {eat_pct+0.4:.1f}% {{ fill: #ffffff; opacity: 1; }}
+                {eat_pct+1.2:.1f}%, 100% {{ fill: {target_color}; opacity: 1; }}
+            }}
+            .pellet_{c}_{r} {{
+                animation: {anim_name} {total_dur}s linear infinite;
+            }}
+            """)
 
     css = "\n".join(css_rules)
 
@@ -159,6 +145,8 @@ def render(data):
         '<defs>',
         f'<linearGradient id="hbg" x1="0" y1="0" x2="0" y2="1">',
         f'<stop offset="0" stop-color="{BG2}"/><stop offset="1" stop-color="{BG}"/></linearGradient>',
+        # Exact Motion Path
+        f'<path id="pacPath" d="{path_d}" fill="none"/>',
         '</defs>',
         f'<rect width="{canvas_w}" height="{canvas_h}" rx="12" fill="url(#hbg)"/>',
         f'<rect x="0.5" y="0.5" width="{canvas_w-1}" height="{canvas_h-1}" rx="12" '
@@ -201,12 +189,11 @@ def render(data):
             gy = grid_top + ri * STEP
             plural = "s" if count != 1 else ""
 
-            if (ci, ri) in food_events:
-                # Active food pellet
+            if (ci, ri) in food_events and count > 0:
                 parts.append(
                     f'<rect class="pellet_{ci}_{ri}" x="{gx}" y="{gy}" width="{CELL}" height="{CELL}" rx="2.5" '
                     f'fill="{PAC_YELLOW}">'
-                    f'<title>{date_s}: {count} contribution{plural} (PAC-PELLET)</title></rect>'
+                    f'<title>{date_s}: {count} contribution{plural} (POWER PELLET)</title></rect>'
                 )
             else:
                 fill_color = PALETTE[lvl] if count > 0 else "#161b22"
@@ -215,16 +202,39 @@ def render(data):
                     f'<title>{date_s}: {count} contribution{plural}</title></rect>'
                 )
 
-    # 2D Pac-Man Sprite (Chomping Mouth)
-    start_gx = grid_left + waypoints[0][0] * STEP + 6
-    start_gy = grid_top + waypoints[0][1] * STEP + 6
+    # 1. PAC-MAN SPRITE using <animateMotion> along exact #pacPath
     parts.append(
-        f'<g class="pacman-sprite" x="{start_gx}" y="{start_gy}">'
-        f'<g class="pacman-mouth">'
+        f'<g>'
         f'<path d="M 0 0 L 7 -5 A 7 7 0 1 1 7 5 Z" fill="{PAC_YELLOW}">'
         f'<animate attributeName="d" values="M 0 0 L 7 -5 A 7 7 0 1 1 7 5 Z; M 0 0 L 7 0 A 7 7 0 1 1 7 0.1 Z; M 0 0 L 7 -5 A 7 7 0 1 1 7 5 Z" dur="0.2s" repeatCount="indefinite"/>'
         f'</path>'
+        f'<animateMotion dur="{total_dur}s" repeatCount="indefinite" rotate="auto">'
+        f'<mpath href="#pacPath"/>'
+        f'</animateMotion>'
         f'</g>'
+    )
+
+    # 2. BLINKY (RED GHOST) following slightly behind on exact #pacPath
+    parts.append(
+        f'<g>'
+        f'<path d="M -16 -6 A 6 6 0 0 1 -4 -6 L -4 4 L -7 1 L -10 4 L -13 1 L -16 4 Z" fill="#ff0000"/>'
+        f'<circle cx="-12" cy="-3" r="1.5" fill="#ffffff"/><circle cx="-12" cy="-3" r="0.7" fill="#0000ff"/>'
+        f'<circle cx="-7" cy="-3" r="1.5" fill="#ffffff"/><circle cx="-7" cy="-3" r="0.7" fill="#0000ff"/>'
+        f'<animateMotion dur="{total_dur}s" repeatCount="indefinite" rotate="auto" begin="-0.3s">'
+        f'<mpath href="#pacPath"/>'
+        f'</animateMotion>'
+        f'</g>'
+    )
+
+    # 3. INKY (CYAN GHOST) following behind Blinky
+    parts.append(
+        f'<g>'
+        f'<path d="M -30 -6 A 6 6 0 0 1 -18 -6 L -18 4 L -21 1 L -24 4 L -27 1 L -30 4 Z" fill="#00ffff"/>'
+        f'<circle cx="-26" cy="-3" r="1.5" fill="#ffffff"/><circle cx="-26" cy="-3" r="0.7" fill="#0000ff"/>'
+        f'<circle cx="-21" cy="-3" r="1.5" fill="#ffffff"/><circle cx="-21" cy="-3" r="0.7" fill="#0000ff"/>'
+        f'<animateMotion dur="{total_dur}s" repeatCount="indefinite" rotate="auto" begin="-0.6s">'
+        f'<mpath href="#pacPath"/>'
+        f'</animateMotion>'
         f'</g>'
     )
 
@@ -266,4 +276,4 @@ if __name__ == "__main__":
     svg = render(data)
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         f.write(svg)
-    print(f"Wrote 2D Pac-Man Maze contribution heatmap to {OUT_PATH} ({len(svg)} bytes)")
+    print(f"Wrote mathematically aligned 2D Pac-Man contribution heatmap to {OUT_PATH} ({len(svg)} bytes)")
