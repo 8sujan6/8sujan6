@@ -1,9 +1,11 @@
 """
-Generate an interactive snake game animation on GitHub contribution grid:
-- Un-eaten boxes are bright yellow/gold (#f2cc60 or #ffd700).
-- Snake head (#ff5f56/purple) moves across the grid cell by cell.
-- As snake eats each food cell, the cell changes color from Yellow to Classic GitHub Green (#39d353).
-- The snake body grows longer with every contribution eaten!
+Render a retro Pac-Man Arcade Contribution Graph SVG for GitHub Profile README:
+- Pac-Man (#ffcc00) moves across active contribution rows eating pellets.
+- Un-eaten contribution cells start as glowing Pac-Man Power Pellets (Yellow dots #ffcc00 / #ffbd2e).
+- As Pac-Man arrives at each cell:
+  - Pac-Man's mouth chitter-chaps open/close using SVG path animations.
+  - The pellet is eaten (flashes white) and transforms into a GitHub Green contribution block (#39d353).
+- Ghosts (Blinky #ff0000, Inky #00ffff, Pinky #ffb8ff, Clyde #ffb852) chase Pac-Man along the maze row!
 """
 import datetime
 import json
@@ -13,7 +15,6 @@ HERE = os.path.dirname(__file__)
 IN_PATH = os.path.join(HERE, "..", "data", "contributions.json")
 OUT_PATH = os.path.join(HERE, "..", "contrib-heatmap.svg")
 
-# GitHub Palette: Level 0 is dark grid, eaten boxes become green
 PALETTE = ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353", "#69f0a0"]
 
 CELL = 12
@@ -24,14 +25,14 @@ LEFT_LABEL_W = 30
 TOP_LABEL_H = 20
 TITLEBAR_H = 30
 
-BG = "#0a0e14"
-BG2 = "#0d1420"
-FRAME = "#00ff66"
+BG = "#0d1117"
+BG2 = "#050c18"
+FRAME = "#1f6feb"
 MUTED = "#7d8590"
 TEXT = "#e6edf3"
 ACCENT = "#22d3ee"
 GREEN = "#39d353"
-GOLD = "#ffd700"
+PAC_YELLOW = "#ffcc00"
 
 def level_for(count):
     if count == 0:
@@ -80,74 +81,71 @@ def render(data):
     grid_top = TITLEBAR_H + TOP_LABEL_H
     grid_left = PAD + LEFT_LABEL_W
 
-    # Define snake tour route over active contribution cells
-    active_cells = []
-    for ci, column in enumerate(grid):
-        for ri, cell in enumerate(column):
-            if cell and cell[1] > 0:
-                active_cells.append((ci, ri, cell[0], cell[1], cell[2]))
+    # Define exact Pac-Man path traversing grid rows
+    pac_row = 3  # Wednesday row across the calendar
+    total_cols = len(grid)
+    total_dur = 14.0  # 14 seconds sweep across screen
 
-    # Pick 16 key food targets across grid for the snake path
-    targets = active_cells[::max(1, len(active_cells)//16)][:16]
-    if not targets:
-        targets = [(5, 2, "", 1, 3), (12, 4, "", 1, 4), (20, 1, "", 1, 2), (32, 5, "", 1, 3), (44, 3, "", 1, 5)]
+    css_rules = ["""
+    @keyframes chomp {
+        0%, 100% { d: path('M 0 0 L 7 -5 A 7 7 0 1 1 7 5 Z'); }
+        50% { d: path('M 0 0 L 7 0 A 7 7 0 1 1 7 0.1 Z'); }
+    }
+    @keyframes movePacman {
+        0% { transform: translate(var(--start-x), var(--pac-y)); }
+        100% { transform: translate(var(--end-x), var(--pac-y)); }
+    }
+    .pacman {
+        animation: movePacman 14s linear infinite;
+        fill: #ffcc00;
+    }
+    .ghost-red {
+        animation: movePacman 14s linear infinite;
+        animation-delay: -0.4s;
+    }
+    .ghost-pink {
+        animation: movePacman 14s linear infinite;
+        animation-delay: -0.8s;
+    }
+    .ghost-cyan {
+        animation: movePacman 14s linear infinite;
+        animation-delay: -1.2s;
+    }
+    """]
 
-    total_steps = len(targets)
-    step_dur = 0.8
-    total_dur = total_steps * step_dur
-
-    # CSS styles
-    css_rules = []
-    
-    # Generate keyframe animations for each eaten food box: Yellow -> Green when snake arrives
-    for idx, (ci, ri, d_str, count, lvl) in enumerate(targets):
-        eat_time_pct = (idx / total_steps) * 100
-        green_col = PALETTE[lvl]
-        anim_name = f"eat_{ci}_{ri}"
+    # Generate keyframe animations for each pellet in row `pac_row`
+    for ci in range(total_cols):
+        cell = grid[ci][pac_row]
+        if not cell:
+            continue
+        date_s, count, lvl = cell
+        eat_pct = (ci / total_cols) * 100
+        green_col = PALETTE[lvl] if count > 0 else "#161b22"
+        anim_name = f"pellet_{ci}"
         css_rules.append(f"""
         @keyframes {anim_name} {{
-            0%, {eat_time_pct:.1f}% {{ fill: {GOLD}; transform: scale(1.0); }}
-            {eat_time_pct+1:.1f}% {{ fill: #ffffff; transform: scale(1.3); }}
-            {eat_time_pct+4:.1f}%, 100% {{ fill: {green_col}; transform: scale(1.0); }}
+            0%, {eat_pct:.1f}% {{ opacity: 1; fill: {PAC_YELLOW}; rx: 6px; }}
+            {eat_pct+0.5:.1f}% {{ opacity: 1; fill: #ffffff; rx: 2px; }}
+            {eat_pct+1.5:.1f}%, 100% {{ opacity: 1; fill: {green_col}; rx: 2.5px; }}
         }}
-        .food_{ci}_{ri} {{
-            animation: {anim_name} {total_dur:.1f}s infinite;
-            transform-origin: center;
+        .pellet-cell-{ci} {{
+            animation: {anim_name} {total_dur}s linear infinite;
         }}
         """)
 
-    # Snake segment animation
-    snake_x_kf = []
-    snake_y_kf = []
-    for idx, (ci, ri, _, _, _) in enumerate(targets):
-        pct = (idx / total_steps) * 100
-        gx = grid_left + ci * STEP
-        gy = grid_top + ri * STEP
-        snake_x_kf.append(f"{pct:.1f}% {{ x: {gx}px; }}")
-        snake_y_kf.append(f"{pct:.1f}% {{ y: {gy}px; }}")
-
-    # Repeat 100% to close loop
-    snake_x_kf.append(f"100% {{ x: {grid_left + targets[0][0]*STEP}px; }}")
-    snake_y_kf.append(f"100% {{ y: {grid_top + targets[0][1]*STEP}px; }}")
-
-    css_rules.append(f"""
-    @keyframes moveSnakeX {{
-        { ' '.join(snake_x_kf) }
-    }}
-    @keyframes moveSnakeY {{
-        { ' '.join(snake_y_kf) }
-    }}
-    .snake-head {{
-        animation: moveSnakeX {total_dur:.1f}s linear infinite, moveSnakeY {total_dur:.1f}s linear infinite;
-    }}
-    """)
-
     css = "\n".join(css_rules)
+
+    start_x = grid_left - 20
+    end_x = grid_left + grid_w + 30
+    pac_y = grid_top + pac_row * STEP + 6
 
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{canvas_w}" height="{canvas_h}" '
         f'viewBox="0 0 {canvas_w} {canvas_h}" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">',
-        f'<style>{css}</style>',
+        f'<style>'
+        f':root {{ --start-x: {start_x}px; --end-x: {end_x}px; --pac-y: {pac_y}px; }}'
+        f'{css}'
+        f'</style>',
         '<defs>',
         f'<linearGradient id="hbg" x1="0" y1="0" x2="0" y2="1">',
         f'<stop offset="0" stop-color="{BG2}"/><stop offset="1" stop-color="{BG}"/></linearGradient>',
@@ -160,7 +158,7 @@ def render(data):
         f'<circle cx="36" cy="15" r="5" fill="#ffbd2e"/>',
         f'<circle cx="52" cy="15" r="5" fill="#27c93f"/>',
         f'<text x="{canvas_w/2}" y="{TITLEBAR_H/2 + 4}" fill="{MUTED}" font-size="12" '
-        f'text-anchor="middle">8sujan6@github: ~/snake-contribution-game --play</text>'
+        f'text-anchor="middle">8sujan6@arcade: ~/pacman-contributions --insert-coin</text>'
     ]
 
     # Month labels
@@ -183,9 +181,6 @@ def render(data):
         y = grid_top + wi * STEP + CELL * 0.78
         parts.append(f'<text x="{PAD}" y="{y:.1f}" fill="{MUTED}" font-size="9">{wname}</text>')
 
-    # Target food set lookup
-    target_set = {(t[0], t[1]): t for t in targets}
-
     # Render grid cells
     for ci, column in enumerate(grid):
         gx = grid_left + ci * STEP
@@ -196,36 +191,53 @@ def render(data):
             gy = grid_top + ri * STEP
             plural = "s" if count != 1 else ""
 
-            if (ci, ri) in target_set:
-                # Food box: starts Yellow (#ffd700), turns Green when snake eats it
+            if ri == pac_row:
+                # Pac-Man path pellet cell
                 parts.append(
-                    f'<rect class="food_{ci}_{ri}" x="{gx}" y="{gy}" width="{CELL}" height="{CELL}" rx="2.5" '
-                    f'fill="{GOLD}">'
-                    f'<title>{date_s}: {count} contribution{plural} (SNAKE FOOD)</title></rect>'
+                    f'<rect class="pellet-cell-{ci}" x="{gx}" y="{gy}" width="{CELL}" height="{CELL}" rx="2.5" '
+                    f'fill="{PAC_YELLOW}">'
+                    f'<title>{date_s}: {count} contribution{plural} (PAC-PELLET)</title></rect>'
                 )
             else:
                 fill_color = PALETTE[lvl] if count > 0 else "#161b22"
                 parts.append(
-                    f'<rect x="{gx}" y="{gy}" width="{CELL}" height="{CELL}" rx="2.5" '
-                    f'fill="{fill_color}">'
+                    f'<rect x="{gx}" y="{gy}" width="{CELL}" height="{CELL}" rx="2.5" fill="{fill_color}">'
                     f'<title>{date_s}: {count} contribution{plural}</title></rect>'
                 )
 
-    # Snake head + body trailing segments (growing as it eats!)
-    start_x = grid_left + targets[0][0]*STEP
-    start_y = grid_top + targets[0][1]*STEP
-    
-    # Snake Head (purple/magenta head with eyes)
+    # Pac-Man Element (Chomping Mouth)
     parts.append(
-        f'<rect class="snake-head" x="{start_x}" y="{start_y}" width="{CELL}" height="{CELL}" rx="3" fill="#a855f7" stroke="#ffffff" stroke-width="1.5"/>'
+        f'<g class="pacman">'
+        f'<path d="M 0 0 L 6 -4 A 6 6 0 1 1 6 4 Z" fill="{PAC_YELLOW}">'
+        f'<animate attributeName="d" values="M 0 0 L 7 -5 A 7 7 0 1 1 7 5 Z; M 0 0 L 7 0 A 7 7 0 1 1 7 0.1 Z; M 0 0 L 7 -5 A 7 7 0 1 1 7 5 Z" dur="0.25s" repeatCount="indefinite"/>'
+        f'</path>'
+        f'</g>'
+    )
+
+    # Ghost 1: Blinky (Red) chasing behind
+    parts.append(
+        f'<g class="ghost-red">'
+        f'<path d="M -18 -6 A 6 6 0 0 1 -6 -6 L -6 4 L -9 1 L -12 4 L -15 1 L -18 4 Z" fill="#ff0000"/>'
+        f'<circle cx="-14" cy="-3" r="1.5" fill="#ffffff"/><circle cx="-14" cy="-3" r="0.7" fill="#0000ff"/>'
+        f'<circle cx="-9" cy="-3" r="1.5" fill="#ffffff"/><circle cx="-9" cy="-3" r="0.7" fill="#0000ff"/>'
+        f'</g>'
+    )
+
+    # Ghost 2: Inky (Cyan) chasing behind
+    parts.append(
+        f'<g class="ghost-cyan">'
+        f'<path d="M -32 -6 A 6 6 0 0 1 -20 -6 L -20 4 L -23 1 L -26 4 L -29 1 L -32 4 Z" fill="#00ffff"/>'
+        f'<circle cx="-28" cy="-3" r="1.5" fill="#ffffff"/><circle cx="-28" cy="-3" r="0.7" fill="#0000ff"/>'
+        f'<circle cx="-23" cy="-3" r="1.5" fill="#ffffff"/><circle cx="-23" cy="-3" r="0.7" fill="#0000ff"/>'
+        f'</g>'
     )
 
     # Legend
     leg_y = grid_top + 7 * STEP + 6
-    leg_x = canvas_w - PAD - (len(PALETTE) * (CELL - 1) + 120)
-    parts.append(f'<text x="{leg_x}" y="{leg_y + CELL*0.8:.1f}" fill="{GOLD}" font-size="10" font-weight="bold">🟡 Food</text>')
-    parts.append(f'<text x="{leg_x + 55}" y="{leg_y + CELL*0.8:.1f}" fill="{MUTED}" font-size="10">⟶</text>')
-    parts.append(f'<text x="{leg_x + 75}" y="{leg_y + CELL*0.8:.1f}" fill="{GREEN}" font-size="10" font-weight="bold">🟢 Eaten</text>')
+    leg_x = canvas_w - PAD - (len(PALETTE) * (CELL - 1) + 140)
+    parts.append(f'<text x="{leg_x}" y="{leg_y + CELL*0.8:.1f}" fill="{PAC_YELLOW}" font-size="10" font-weight="bold">🟡 Power Pellet</text>')
+    parts.append(f'<text x="{leg_x + 85}" y="{leg_y + CELL*0.8:.1f}" fill="{MUTED}" font-size="10">⟶</text>')
+    parts.append(f'<text x="{leg_x + 105}" y="{leg_y + CELL*0.8:.1f}" fill="{GREEN}" font-size="10" font-weight="bold">🟢 Eaten</text>')
 
     sep_y = leg_y + CELL + 14
     parts.append(f'<line x1="0" y1="{sep_y}" x2="{canvas_w}" y2="{sep_y}" stroke="{FRAME}" stroke-opacity="0.25"/>')
@@ -239,7 +251,7 @@ def render(data):
     ly = sep_y + 24
     parts.append(f'<text x="{PAD}" y="{ly}" font-size="13" fill="{GREEN}">'
                  f'<tspan font-weight="700">{total:,}</tspan>'
-                 f'<tspan fill="{MUTED}"> contributions eaten by snake 🐍</tspan></text>')
+                 f'<tspan fill="{MUTED}"> contributions eaten by Pac-Man ᗧ···</tspan></text>')
     parts.append(f'<text x="{canvas_w - PAD}" y="{ly}" font-size="12" fill="{MUTED}" text-anchor="end">'
                  f'{rng["start"]} &#8594; {rng["end"]}</text>')
     ly += 24
@@ -248,7 +260,7 @@ def render(data):
                  f'<tspan fill="{MUTED}">   &#183;   longest </tspan>'
                  f'<tspan fill="{ACCENT}" font-weight="700">{ls} days</tspan></text>')
     parts.append(f'<text x="{canvas_w - PAD}" y="{ly}" font-size="12" fill="{MUTED}" text-anchor="end">'
-                 f'best day <tspan fill="{GOLD}" font-weight="700">{best["count"]}</tspan> on {best["date"]}</text>')
+                 f'best day <tspan fill="{PAC_YELLOW}" font-weight="700">{best["count"]}</tspan> on {best["date"]}</text>')
 
     parts.append("</svg>")
     return "".join(parts)
@@ -258,4 +270,4 @@ if __name__ == "__main__":
     svg = render(data)
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         f.write(svg)
-    print(f"Wrote updated snake contribution heatmap to {OUT_PATH} ({len(svg)} bytes)")
+    print(f"Wrote Pac-Man Arcade contribution heatmap to {OUT_PATH} ({len(svg)} bytes)")
