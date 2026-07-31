@@ -4,14 +4,6 @@
 
 <img src="./stats.svg" width="620" alt="Contributions in the last year"/>
 
-<a href="https://github.com/8sujan6">
-  <img src="https://img.shields.io/badge/GitHub-8sujan6-0ae448?style=for-the-badge&logo=github&logoColor=black" alt="GitHub"/>
-</a>
-&nbsp;&nbsp;
-<a href="https://linkedin.com/in/8sujan6">
-  <img src="https://img.shields.io/badge/LinkedIn-8sujan6-abff84?style=for-the-badge&logo=linkedin&logoColor=black" alt="LinkedIn"/>
-</a>
-
 </div>
 
 <br>
