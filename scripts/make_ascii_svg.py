@@ -20,8 +20,8 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 # defaults to the prepped grayscale image (see prep_photo.py), which already has
 # the background removed + local contrast applied.
-SRC = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "..", "source-prepped.png")
-OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(HERE, "..", "sujan-ascii.svg")
+SRC = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "..", "..", "sujan.pfp.png")
+OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(HERE, "..", "ascii.svg")
 
 COLS = 100
 ROWS = 53

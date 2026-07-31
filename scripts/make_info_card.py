@@ -43,24 +43,25 @@ ACCENT = "#ff0000"    # Blinky Red accent
 #    ("bul", text)          -> green dot + light bullet
 #    ("gap",)               -> a little vertical space
 # ===========================================================================
-HOST = "8sujan6"   # shown as  8sujan6@github  in the header
+HOST = "8sujan6"
 
 ROWS = [
     ("host",),
-    ("kv", "Now", "Your current role @ Company"),
-    ("kv", "Prev", "Previous role @ Company"),
-    ("kv", "Also", "Another hat you wear"),
-    ("kv", "Edu", "Your degree, School 'YY"),
+    ("kv", "Role", "Mobile App Developer"),
+    ("kv", "Location", "Bengaluru, India"),
+    ("kv", "Edu", "MCA"),
+    ("kv", "Status", "Open to Work · Building in Public"),
     ("gap",),
     ("sec", "Stack"),
-    ("kv", "Frontend", "React, Next.js, TypeScript"),
-    ("kv", "Backend", "Node, Postgres, GraphQL"),
-    ("kv", "AI / ML", "LangChain, OpenAI, ..."),
-    ("kv", "Cloud", "AWS, Docker, Vercel"),
+    ("kv", "Languages", "Dart, Python, JavaScript"),
+    ("kv", "Mobile", "Flutter, Android Studio"),
+    ("kv", "Web & BE", "Node.js, FastAPI, HTML/CSS"),
+    ("kv", "Database", "Firebase, SQLite"),
+    ("kv", "Tools", "Git, VS Code, Figma, Vercel"),
     ("gap",),
-    ("sec", "Highlights"),
-    ("bul", "A thing you're proud of"),
-    ("bul", "Another highlight worth bragging about"),
+    ("sec", "Connect"),
+    ("kv", "GitHub", "github.com/8sujan6"),
+    ("kv", "LinkedIn", "linkedin.com/in/8sujan6"),
 ]
 
 

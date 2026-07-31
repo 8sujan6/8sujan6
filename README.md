@@ -1,26 +1,18 @@
 <div align="center">
-
-<!-- HERO SYSTEM BANNER WITH LIGHT/DARK AUTO SWITCHING -->
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/8sujan6/8sujan6/main/dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/8sujan6/8sujan6/main/light.svg">
-  <img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/dark.svg" width="100%" alt="Sujan - System Profile" />
-</picture>
-
-<br><br>
-
-<!-- TERMINAL BOOT SEQUENCE CARD -->
-<img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/boot-sequence.svg" width="100%" alt="Terminal Boot Sequence" />
-
-<br><br>
-
-<!-- ROCKET JET CONTRIBUTION GRAPH -->
-<img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/github-jet.svg" width="100%" alt="GitHub Contribution Rocket Jet" />
-
-<br><br>
-
-<!-- COMMIT SIGNAL OSCILLOSCOPE WAVEFORM -->
-<img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/github-oscilloscope.svg" width="100%" alt="GitHub Commit Oscilloscope" />
-
+  <a href="https://github.com/8sujan6">
+    <img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/ascii.svg" width="410" alt="Sujan ASCII Portrait" />
+  </a>
+  <a href="https://github.com/8sujan6">
+    <img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/info-card.svg" width="410" alt="Sujan Info Card" />
+  </a>
 </div>
+
+<br>
+
+<div align="center">
+  <b>Mobile App Developer</b> · Bengaluru, India · MCA
+  <br>
+  <code>Dart</code> · <code>Flutter</code> · <code>Python</code> · <code>JavaScript</code> · <code>Node.js</code> · <code>FastAPI</code> · <code>Firebase</code>
+</div>
+
 
