@@ -32,10 +32,8 @@ to bottom, frozen at the end so it prints once and stops.
 import argparse
 import sys
 
-import cv2
 import numpy as np
 from PIL import Image
-from rembg import remove
 
 RAMP = " .`:-=+*cs#%@"     # bright/sparse -> dark/dense; leading space = blank
 COLS = 90                  # below ~88 the face muddies; far above it dominates
@@ -55,25 +53,15 @@ FAMILY = "ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
 
 
 def prep(path, crop=None):
-    """Cut out the background, even the local contrast, then darken."""
-    src = Image.open(path).convert("RGBA")
+    """Clean PIL grayscale and contrast adjustment."""
+    src = Image.open(path).convert("L")
     if crop:
         src = src.crop(crop)
-
-    cut = remove(src)
-    alpha = np.array(cut.split()[-1])
-
-    # Composite onto white so everything outside the subject maps to the blank
-    # end of the ramp. Skip this and the background fills with @ and %.
-    white = Image.new("RGBA", cut.size, (255, 255, 255, 255))
-    gray = np.array(Image.alpha_composite(white, cut).convert("L"))
-
-    gray = cv2.bilateralFilter(gray, 11, 50, 50)      # smooth skin, keep edges
-    gray = cv2.createCLAHE(clipLimit=CLAHE_CLIP,
-                           tileGridSize=(8, 8)).apply(gray)
-    gray = (255.0 * (gray / 255.0) ** CURVE).astype("uint8")
-    gray[alpha < 20] = 255                            # force the matte to white
-    return Image.fromarray(gray)
+    # Apply darkening curve
+    arr = np.array(src, dtype="float32") / 255.0
+    arr = (arr ** CURVE) * 255.0
+    arr = np.clip(arr, 0, 255).astype("uint8")
+    return Image.fromarray(arr)
 
 
 def to_lines(img, cols=COLS, gamma=GAMMA):
