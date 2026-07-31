@@ -35,9 +35,9 @@ API = "https://api.github.com/graphql"
 #  * privacy: PUBLIC on repositories — otherwise a personal token sees private
 #    repos and a workflow token doesn't, so language totals disagree.
 QUERY = """
-query($login: String!, $from: DateTime!, $to: DateTime!) {
+query($login: String!) {
   user(login: $login) {
-    contributionsCollection(from: $from, to: $to) {
+    contributionsCollection {
       contributionCalendar {
         totalContributions
         weeks { contributionDays { contributionCount date weekday } }
@@ -98,17 +98,9 @@ MON = ["jan", "feb", "mar", "apr", "may", "jun",
 
 # ---------------------------------------------------------------- data
 
-def window():
-    today = datetime.now(timezone.utc).date()
-    start = today - timedelta(days=365)
-    return (f"{start.isoformat()}T00:00:00Z", f"{today.isoformat()}T23:59:59Z")
-
-
 def fetch(login, token):
-    since, until = window()
     body = json.dumps({"query": QUERY,
-                       "variables": {"login": login,
-                                     "from": since, "to": until}}).encode()
+                       "variables": {"login": login}}).encode()
     req = urllib.request.Request(
         API, data=body,
         headers={"Authorization": f"bearer {token}",
