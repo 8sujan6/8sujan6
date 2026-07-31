@@ -370,71 +370,79 @@ def draw_heading(word):
 
 
 def draw_year(s):
-    """Seven rows by fifty-three weeks, intensity as a character."""
-    FS, LH, COLW = 9.2, 11.0, 2
-    CW = FS * 0.6
-    pad_l, pad_t = LEFT, 44
+    """GitHub-style contribution heatmap grid of boxes matching standard GitHub UI."""
+    BOX_SIZE = 9.5
+    GAP = 2.5
+    STEP = BOX_SIZE + GAP
     weeks = s["weeks"]
-    ncols = len(weeks) * COLW
-    H = int(pad_t + 7 * LH + 26)
+    ncols = len(weeks)
+
+    pad_l = 38
+    pad_t = 30
+    grid_w = ncols * STEP - GAP
+    grid_h = 7 * STEP - GAP
+    H = int(pad_t + grid_h + 30)
+
+    # Gradient shades matching standard GitHub dark theme with green gradient accent
+    SHADE = ["#161b22", "#0e4429", "#006d32", "#0ae448", "#abff84"]
 
     def level(v):
-        for i, cut in enumerate((0, 2, 5, 9)):
-            if v <= cut:
-                return i
+        if v == 0:  return 0
+        if v <= 2:  return 1
+        if v <= 5:  return 2
+        if v <= 9:  return 3
         return 4
 
     p = [head(WIDTH, H)]
-    p.append(f'<g opacity="0">{fade(0.10)}'
-             + label(pad_l, 16, "THE YEAR", 9, "m-f",
-                     extra=' letter-spacing="1.3"')
-             + label(pad_l, 32, f"{s['active']} of "
-                     f"{sum(len(w) for w in weeks)} days had a contribution", 11)
-             + '</g>')
 
-    # ramp legend, so the encoding is never carried by shade alone
-    lx = WIDTH - 6
-    p.append(f'<g opacity="0">{fade(1.30)}'
-             + label(lx - 78, 32, "less", 9, "m-f", "end")
-             + f'<text xml:space="preserve" x="{lx - 72}" y="32" class="d-f" '
-             f'font-size="{FS}">{" ".join(RAMP[1:])}</text>'
-             + label(lx, 32, "more", 9, "m-f", "end") + '</g>')
-
-    for r in range(7):
-        chars = []
-        for w in weeks:
-            day = next((d for d in w if d.get("weekday") == r), None)
-            v = day["contributionCount"] if day else 0
-            chars.append(RAMP[level(v)] * COLW)
-        line = "".join(chars).rstrip()
-        if not line:
-            continue
-        y = pad_t + r * LH
-        w_px = max(len(line), 1) * CW
-        cid = f"ry{r}"
-        delay = 0.30 + r * 0.07
-        p.append(f'<clipPath id="{cid}"><rect x="{pad_l}" y="{y}" '
-                 f'height="{LH}" width="0"><animate attributeName="width" '
-                 f'from="0" to="{w_px:.1f}" begin="{delay:.2f}s" dur="0.40s" '
-                 f'fill="freeze"/></rect></clipPath>')
-        safe = line.replace("&", "&amp;").replace("<", "&lt;")
-        p.append(f'<g clip-path="url(#{cid})"><text xml:space="preserve" '
-                 f'x="{pad_l}" y="{y + FS - 0.6:.1f}" class="d-f" '
-                 f'font-size="{FS}">{safe}</text></g>')
-
-    for r, lab in ((1, "mon"), (3, "wed"), (5, "fri")):
-        p.append(label(pad_l - 7, pad_t + r * LH + FS - 0.6, lab, 9, "m-f",
-                       "end"))
-
+    # ── Month headers at TOP ──────────────────────────────────────────────────
     last_m, last_x = None, -999.0
-    base_y = pad_t + 7 * LH + 13
-    for i, w in enumerate(weeks):
-        m = int(w[0]["date"][5:7])
-        x = pad_l + i * COLW * CW
-        if m != last_m and i < len(weeks) - 1 and x - last_x >= 34:
-            p.append(label(x, base_y, MON[m - 1], 9, "m-f"))
+    for i, week in enumerate(weeks):
+        if not week:
+            continue
+        m = int(week[0]["date"][5:7])
+        x = pad_l + i * STEP
+        if m != last_m and i < len(weeks) - 1 and (x - last_x) >= 28:
+            p.append(label(x, 18, MON[m - 1].capitalize(), 10, "m-f"))
             last_x = x
         last_m = m
+
+    # ── Weekday labels at LEFT ────────────────────────────────────────────────
+    for r, lab in ((1, "Mon"), (3, "Wed"), (5, "Fri")):
+        y_pos = pad_t + r * STEP + BOX_SIZE - 1
+        p.append(label(pad_l - 6, y_pos, lab, 10, "m-f", "end"))
+
+    # ── Heatmap boxes (grid) ──────────────────────────────────────────────────
+    cid = "ry_box"
+    clip, cursor = wipe(cid, pad_l, pad_t - 2, grid_w + 4, grid_h + 4, 0.10, 1.0)
+    p.append(clip)
+    p.append(f'<g clip-path="url(#{cid})">')
+
+    for wi, week in enumerate(weeks):
+        for day in week:
+            r = day.get("weekday", 0)
+            v = day.get("contributionCount", 0)
+            x = pad_l + wi * STEP
+            y = pad_t + r * STEP
+            col = SHADE[level(v)]
+            p.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{BOX_SIZE:.1f}" height="{BOX_SIZE:.1f}" '
+                     f'rx="2" fill="{col}"/>')
+
+    p.append('</g>')
+    p.append(cursor)
+
+    # ── Footer: Learn link & Less/More legend at BOTTOM ───────────────────────
+    footer_y = pad_t + grid_h + 20
+    p.append(label(pad_l, footer_y, "Learn how we count contributions", 10, "m-f"))
+
+    leg_x = WIDTH - 95
+    p.append(label(leg_x - 6, footer_y, "Less", 10, "m-f", "end"))
+    for li, col in enumerate(SHADE):
+        bx = leg_x + li * (BOX_SIZE + 2)
+        by = footer_y - BOX_SIZE + 1
+        p.append(f'<rect x="{bx:.1f}" y="{by:.1f}" width="{BOX_SIZE:.1f}" height="{BOX_SIZE:.1f}" '
+                 f'rx="2" fill="{col}"/>')
+    p.append(label(leg_x + len(SHADE) * (BOX_SIZE + 2) + 4, footer_y, "More", 10, "m-f"))
 
     p.append("</svg>")
     return "".join(p)
