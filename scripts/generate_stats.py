@@ -100,7 +100,7 @@ MON = ["jan", "feb", "mar", "apr", "may", "jun",
 
 def window():
     today = datetime.now(timezone.utc).date()
-    start = today - timedelta(days=364)
+    start = today - timedelta(days=365)
     return (f"{start.isoformat()}T00:00:00Z", f"{today.isoformat()}T23:59:59Z")
 
 
