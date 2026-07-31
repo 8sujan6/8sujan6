@@ -43,13 +43,10 @@ CURVE = 1.7                # the darkening curve — the difference-maker
 CROP_BOTTOM = 0.0          # fraction to trim off the bottom (torso, chair)
 ROW_RATIO = 0.48           # monospace cells are about twice as tall as wide
 
-FG_LIGHT = "#0ae448"       # green gradient start
-FG_DARK = "#abff84"        # green gradient end accent
 CHAR_W = 7.74              # 0.600 em at FONT_SIZE — keep these in step
 FONT_SIZE = 12.9
 LINE_H = 15
 ROW_DELAY = 0.09           # per-row stagger, seconds
-FAMILY = "ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
 
 
 def prep(path, crop=None):
