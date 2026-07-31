@@ -56,10 +56,10 @@ query($login: String!, $from: DateTime!, $to: DateTime!) {
 """
 
 # The portrait's ink is the data ink, so every graphic reads as one material.
-LIGHT = dict(data="#6e7681", emph="#424a53", dim="#8c959f",
-             rule="#d8dee4", surface="#ffffff")
-DARK = dict(data="#c9d1d9", emph="#f0f6fc", dim="#8b949e",
-            rule="#30363d", surface="#0d1117")
+LIGHT = dict(data="#0ae448", emph="#0ae448", dim="#abff84",
+             rule="#0ae448", surface="#ffffff")
+DARK = dict(data="#0ae448", emph="#abff84", dim="#abff84",
+            rule="#0ae448", surface="#0d1117")
 # JBMono is the inlined subset below; the rest is a fallback for the unlikely
 # case a renderer ignores the embedded face.
 MONO = ("JBMono,ui-monospace,SFMono-Regular,Menlo,Consolas,"
@@ -199,14 +199,16 @@ def summarise(user):
 # ---------------------------------------------------------------- drawing
 
 def style(extra="", font=None):
-    def block(t):
-        return (f".d-f{{fill:{t['data']}}}.d-s{{stroke:{t['data']}}}"
-                f".e-f{{fill:{t['emph']}}}.m-f{{fill:{t['dim']}}}"
-                f".u-s{{stroke:{t['rule']}}}.r{{stroke:{t['surface']}}}")
-    return (f"<style>{font or font_text()}"
-            f"{block(LIGHT)}.w{{fill:{LIGHT['data']};opacity:.13}}{extra}"
-            f"@media(prefers-color-scheme:dark){{{block(DARK)}"
-            f".w{{fill:{DARK['data']};opacity:.16}}}}</style>")
+    grad_def = ('<defs><linearGradient id="theme-grad" x1="0%" y1="0%" x2="100%" y2="100%">'
+                '<stop offset="20.74%" stop-color="#0ae448"/>'
+                '<stop offset="65.5%" stop-color="#abff84"/>'
+                '</linearGradient></defs>')
+    def block():
+        return (f".d-f{{fill:url(#theme-grad)}}.d-s{{stroke:url(#theme-grad)}}"
+                f".e-f{{fill:url(#theme-grad)}}.m-f{{fill:url(#theme-grad)}}"
+                f".u-s{{stroke:url(#theme-grad)}}.r{{stroke:#0d1117}}")
+    return (f"{grad_def}<style>{font or font_text()}"
+            f"{block()}.w{{fill:url(#theme-grad);opacity:.2}}{extra}</style>")
 
 
 def head(w, h, font=None):

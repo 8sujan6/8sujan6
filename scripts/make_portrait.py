@@ -45,8 +45,8 @@ CURVE = 1.7                # the darkening curve — the difference-maker
 CROP_BOTTOM = 0.0          # fraction to trim off the bottom (torso, chair)
 ROW_RATIO = 0.48           # monospace cells are about twice as tall as wide
 
-FG_LIGHT = "#6e7681"       # readable on GitHub light — the portrait's grey
-FG_DARK = "#c9d1d9"        # and its dark-mode step
+FG_LIGHT = "#0ae448"       # green gradient start
+FG_DARK = "#abff84"        # green gradient end accent
 CHAR_W = 7.74              # 0.600 em at FONT_SIZE — keep these in step
 FONT_SIZE = 12.9
 LINE_H = 15
@@ -109,8 +109,11 @@ def build_svg(lines, cols=COLS):
     p = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" '
          f'height="{height}" viewBox="0 0 {width} {height}" '
          f'font-family="{FAMILY}">',
-         f'<style>.a{{fill:{FG_LIGHT}}}'
-         f'@media(prefers-color-scheme:dark){{.a{{fill:{FG_DARK}}}}}</style>']
+         f'<defs><linearGradient id="theme-grad" x1="0%" y1="0%" x2="100%" y2="100%">'
+         f'<stop offset="20.74%" stop-color="#0ae448"/>'
+         f'<stop offset="65.5%" stop-color="#abff84"/>'
+         f'</linearGradient></defs>',
+         f'<style>.a{{fill:url(#theme-grad);}}</style>']
 
     for i, line in enumerate(lines):
         y = pad + i * LINE_H
