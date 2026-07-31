@@ -33,7 +33,7 @@ Self-generating dynamic GitHub profile with automated stats graphics and custom 
 
 <img src="./langs.svg" width="620" alt="Top languages by bytes and by repo"/>
 
-<img src="./year.svg" width="620" alt="The last year, one character per day"/>
+<img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/year.svg?v=2" width="620" alt="The last year contribution heatmap"/>
 
 </div>
 
