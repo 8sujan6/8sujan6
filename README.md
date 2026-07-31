@@ -2,7 +2,7 @@
 
 <img src="./ascii.svg" width="460" alt="Sujan ASCII Portrait"/>
 
-<img src="./stats.svg" width="620" alt="Contributions in the last year"/>
+<img src="https://raw.githubusercontent.com/8sujan6/8sujan6/main/stats.svg?v=2" width="620" alt="Contributions in the last year"/>
 
 </div>
 
