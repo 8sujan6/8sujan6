@@ -370,20 +370,24 @@ def draw_heading(word):
 
 
 def draw_year(s):
-    """GitHub-style contribution heatmap grid of boxes matching standard GitHub UI."""
-    BOX_SIZE = 9.5
-    GAP = 2.5
-    STEP = BOX_SIZE + GAP
+    """GitHub-style contribution heatmap grid perfectly aligned inside 620px width."""
     weeks = s["weeks"]
     ncols = len(weeks)
 
-    pad_l = 38
-    pad_t = 30
+    pad_l = 34  # Shared left alignment inset matching LEFT=34 in stats.svg & streak.svg
+    pad_t = 28
+    
+    # Calculate exact cell size and step to fit perfectly between pad_l and right margin
+    avail_w = WIDTH - pad_l - 4  # 582px available width
+    STEP = avail_w / max(ncols, 1)  # ~10.98px step for 53 weeks
+    BOX_SIZE = STEP - 2.2  # ~8.78px box side
+    GAP = 2.2
+
     grid_w = ncols * STEP - GAP
     grid_h = 7 * STEP - GAP
-    H = int(pad_t + grid_h + 30)
+    H = int(pad_t + grid_h + 26)
 
-    # Gradient shades matching standard GitHub dark theme with green gradient accent
+    # Gradient shades matching dark theme with green gradient accent
     SHADE = ["#161b22", "#0e4429", "#006d32", "#0ae448", "#abff84"]
 
     def level(v):
@@ -402,19 +406,19 @@ def draw_year(s):
             continue
         m = int(week[0]["date"][5:7])
         x = pad_l + i * STEP
-        if m != last_m and i < len(weeks) - 1 and (x - last_x) >= 28:
-            p.append(label(x, 18, MON[m - 1].capitalize(), 10, "m-f"))
+        if m != last_m and i < len(weeks) - 1 and (x - last_x) >= 26:
+            p.append(label(x, 16, MON[m - 1].capitalize(), 10, "m-f"))
             last_x = x
         last_m = m
 
     # ── Weekday labels at LEFT ────────────────────────────────────────────────
     for r, lab in ((1, "Mon"), (3, "Wed"), (5, "Fri")):
-        y_pos = pad_t + r * STEP + BOX_SIZE - 1
+        y_pos = pad_t + r * STEP + BOX_SIZE - 1.5
         p.append(label(pad_l - 6, y_pos, lab, 10, "m-f", "end"))
 
     # ── Heatmap boxes (grid) ──────────────────────────────────────────────────
     cid = "ry_box"
-    clip, cursor = wipe(cid, pad_l, pad_t - 2, grid_w + 4, grid_h + 4, 0.10, 1.0)
+    clip, cursor = wipe(cid, pad_l, pad_t - 2, grid_w + 2, grid_h + 4, 0.10, 1.0)
     p.append(clip)
     p.append(f'<g clip-path="url(#{cid})">')
 
@@ -432,17 +436,22 @@ def draw_year(s):
     p.append(cursor)
 
     # ── Footer: Learn link & Less/More legend at BOTTOM ───────────────────────
-    footer_y = pad_t + grid_h + 20
+    footer_y = pad_t + grid_h + 18
     p.append(label(pad_l, footer_y, "Learn how we count contributions", 10, "m-f"))
 
-    leg_x = WIDTH - 95
-    p.append(label(leg_x - 6, footer_y, "Less", 10, "m-f", "end"))
+    leg_box_size = 9.0
+    leg_item_gap = 2.0
+    leg_total_w = len(SHADE) * (leg_box_size + leg_item_gap) - leg_item_gap
+    leg_right_x = pad_l + grid_w  # Align legend right edge precisely with the rightmost box column
+    leg_left_x = leg_right_x - leg_total_w
+
+    p.append(label(leg_left_x - 6, footer_y, "Less", 10, "m-f", "end"))
     for li, col in enumerate(SHADE):
-        bx = leg_x + li * (BOX_SIZE + 2)
-        by = footer_y - BOX_SIZE + 1
-        p.append(f'<rect x="{bx:.1f}" y="{by:.1f}" width="{BOX_SIZE:.1f}" height="{BOX_SIZE:.1f}" '
+        bx = leg_left_x + li * (leg_box_size + leg_item_gap)
+        by = footer_y - leg_box_size + 1
+        p.append(f'<rect x="{bx:.1f}" y="{by:.1f}" width="{leg_box_size:.1f}" height="{leg_box_size:.1f}" '
                  f'rx="2" fill="{col}"/>')
-    p.append(label(leg_x + len(SHADE) * (BOX_SIZE + 2) + 4, footer_y, "More", 10, "m-f"))
+    p.append(label(leg_right_x + 5, footer_y, "More", 10, "m-f"))
 
     p.append("</svg>")
     return "".join(p)
