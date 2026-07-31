@@ -44,5 +44,4 @@ Every graphic here is generated directly for `@8sujan6`, not embedded from anyon
 [`scripts/make_portrait.py`](scripts/make_portrait.py); the stat graphics and<br>
 these section headings are drawn from the GitHub API, committing only what changed.
 
-They animate with SMIL inside the SVG, applying the custom linear-gradient palette (`#0ae448` to `#abff84`).
 
