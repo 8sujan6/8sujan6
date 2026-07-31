@@ -20,11 +20,6 @@ Deep into **Flutter**, **Dart**, **Python**, **JavaScript**, **Node.js**, and **
 
 <samp>dart &nbsp; flutter &nbsp; python &nbsp; javascript &nbsp; node.js &nbsp; fastapi &nbsp; firebase &nbsp; sqlite &nbsp; android-studio &nbsp; vs-code &nbsp; figma &nbsp; git &nbsp; vercel</samp>
 
-<img src="./hd-projects.svg" width="620" alt="projects"/>
-
-**[8sujan6 Profile System](https://github.com/8sujan6/8sujan6)** &nbsp;·&nbsp; <samp>python, svg, smil</samp><br>
-Self-generating dynamic GitHub profile with automated stats graphics and custom ASCII portrait.
-
 <img src="./hd-stats.svg" width="620" alt="stats"/>
 
 <div align="center">
@@ -37,9 +32,3 @@ Self-generating dynamic GitHub profile with automated stats graphics and custom 
 
 </div>
 
-<img src="./hd-about-this-page.svg" width="620" alt="about this page"/>
-
-Every graphic here is generated directly for `@8sujan6`, not embedded from anyone else's server.<br>
-`ascii.svg` is rendered from a custom photo pushed through a character ramp by<br>
-[`scripts/make_portrait.py`](scripts/make_portrait.py); the stat graphics and<br>
-these section headings are drawn from the GitHub API, committing only what changed.
